@@ -1,0 +1,169 @@
+#project
+
+library(TSA)
+library(astsa)
+library(readxl)
+library(fGarch)
+tsla <- read_excel("~/Downloads/stat8444timeseries/project/tsla.xlsx")
+tsla
+plot(tsla)
+
+#GM
+GM <- read_excel("~/Downloads/stat8444timeseries/project/GM.xlsx")
+GMts=ts(GM$Price,frequency=1,start = 2021/04/19)
+plot(GMts)
+acf2(GMts)
+lGMts=log(GMts)
+dlGMts=diff(lGMts)
+plot(dlGMts)
+acf2(dlGMts)
+
+#S&P500
+SP500 <- read_excel("~/Downloads/stat8444timeseries/project/S&P500.xlsx")
+plot(SP500)
+SP500ts=ts(SP500$Price,frequency=1,start = 2021/04/19)
+plot(SP500ts)
+acf2(SP500ts)
+lSPts=log(SP500ts)
+dlSPts=diff(lSPts)
+plot(dlSPts)
+acf2(dlSPts)
+
+
+#tsla300day
+tsla300day <- read_excel("~/Downloads/stat8444timeseries/project/tsla300day.xlsx")
+plot(tsla300day)
+tsla300dayts=ts(tsla300day$Price,frequency=1,start = 2021/04/19)
+ltsla300dayts
+
+ltsla300dayts=log(tsla300dayts)
+dltsla300dayts=diff(ltsla300dayts,differences = 1)
+
+dtsla300dayts=diff(tsla300dayts,differences = 1)
+
+acf2(tsla300dayts)
+acf2(dtsla300dayts)
+acf2(dltsla300dayts)
+
+plot(tsla300dayts)
+plot(dtsla300dayts)
+plot(ltsla300dayts)
+plot(dltsla300dayts)
+
+#periodogram
+P = Mod(2*fft(dltsla300dayts)/300)^2
+Fr=(0:150)/300
+plot(Fr,P,type="o",xlab="frequency",ylab="scaled periodogram")
+
+#or
+FF=abs(fft(dltsla300dayts)/sqrt(300)^2)
+P = (4/300)*FF[1:151]
+f = (0:150)/300
+plot(f,P,type = "l")
+
+
+
+# SARIMA model
+uplim=4
+aicmat=matrix(double((uplim+1)^2),uplim+1,uplim+1)
+for (i in 0:uplim){
+  for (j in 0:uplim){
+    aicmat[i+1,j+1]=arima(dltsla300dayts,order=c(i,0,j))$aic}}
+aicmat
+
+sarima(ltsla300dayts,2,1,4)
+sarima(ltsla300dayts,2,1,3)
+sarima(ltsla300dayts,2,1,2)
+
+sarima.for(ltsla300dayts,5,2,1,2)
+
+out=sarima.for(ltsla300dayts,5,2,1,2)
+pred=out$pred
+pred
+se=out$se
+pred-2*se 
+pred+2*se
+
+
+
+
+out=arima(ltsla300dayts,order=c(2,1,2))
+
+dat=out$residuals
+plot(dat)
+
+#Trying to find an ARCH model for the residuals.
+acf2(dat)
+
+acf2(dat*dat)
+
+acf2(abs(dat))
+
+out=garchFit(~arma(2,3)+garch(1,1),dltsla300dayts,trace=F) 
+
+summary(out)
+
+out2=garchFit(~arma(2,2)+garch(1,1),dltsla300dayts,trace=F)
+
+summary(out2)
+
+out3=garchFit(~arma(2,1)+garch(1,1),dltsla300dayts,trace=F)
+
+summary(out3)
+
+predict(out,5,plot=T,confidence=0.95,nx=300)
+
+
+
+
+
+
+
+
+#oilprice
+oilprice <- read_excel("~/Downloads/stat8444timeseries/project/oilprice.xlsx")
+oilpricets=ts(oilprice$Oilprice,frequency=1,start=2021/04/19)
+plot(oilpricets)
+acf2(oilpricets)
+
+loilpricets=log(oilpricets)
+dloilpricets=diff(loilpricets,differences = 1)
+plot(dloilpricets)
+acf2(dloilpricets)
+
+doilpricets=diff(oilpricets,differences = 1)
+plot(doilpricets)
+acf2(doilpricets)
+
+uplim=4
+aicmat=matrix(double((uplim+1)^2),uplim+1,uplim+1)
+for (i in 0:uplim){
+  for (j in 0:uplim){
+    aicmat[i+1,j+1]=arima(dloilpricets,order=c(i,0,j))$aic}}
+aicmat
+
+sarima(dloilpricets,2,0,2)
+
+
+
+
+par(mfrow=c(3,1))
+ccf(tsla300dayts,oilpricets)
+ccf(oilpricets,tsla300dayts)
+
+ccf(dtsla300dayts,doilpricets)
+ccf(doilpricets,dtsla300dayts)
+
+ccf(dltsla300dayts,dloilpricets)
+ccf(dloilpricets,dltsla300dayts)
+
+ccf(dlGMts,dltsla300dayts)
+ccf(dltsla300dayts,dlSPts)
+
+n=length(dlGMts)
+out=lm(dltsla300dayts[2:n]~dlSPts[1:(n-1)])
+
+res=out$residuals
+acf2(res)
+
+summary(fit <- lm(dltsla300dayts~dlGMts+ dlSPts, na.action=NULL))
